@@ -1,0 +1,79 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String       @id @default(cuid())
+  role        String       // 'LANDOWNER', 'FARMER', 'INVESTOR'
+  name        String
+  email       String       @unique
+  avatarUrl   String?
+  bio         String?
+  isVerified  Boolean      @default(false)
+  lands       Land[]       @relation("LandOwner")
+  rented      Land[]       @relation("LandRenter")
+  investments Investment[]
+  messagesSent   Message[] @relation("Sender")
+  messagesRecv   Message[] @relation("Receiver")
+}
+
+model Land {
+  id            String       @id @default(cuid())
+  ownerId       String
+  renterId      String?
+  name          String
+  location      String
+  latitude      Float?
+  longitude     Float?
+  imageUrl      String?
+  sizeAcres     Float
+  soilType      String?      // AI Generated
+  suitableCrops String?      // AI Generated list
+  estBudget     Float?       // AI Generated
+  estYield      Float?       // AI Generated
+  pesticides    String?      // AI Generated
+  status        String       @default("AVAILABLE") // AVAILABLE, RENTED
+  owner         User         @relation("LandOwner", fields: [ownerId], references: [id])
+  renter        User?        @relation("LandRenter", fields: [renterId], references: [id])
+  investments   Investment[]
+  updates       ProjectUpdate[]
+}
+
+model ProjectUpdate {
+  id        String   @id @default(cuid())
+  landId    String
+  title     String
+  content   String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  land      Land     @relation(fields: [landId], references: [id])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  content    String
+  createdAt  DateTime @default(now())
+  sender     User     @relation("Sender", fields: [senderId], references: [id])
+  receiver   User     @relation("Receiver", fields: [receiverId], references: [id])
+}
+
+model Investment {
+  id         String @id @default(cuid())
+  landId     String
+  investorId String
+  amount     Float
+  investor   User   @relation(fields: [investorId], references: [id])
+  land       Land   @relation(fields: [landId], references: [id])
+}
