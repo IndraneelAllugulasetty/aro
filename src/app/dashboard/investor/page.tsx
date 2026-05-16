@@ -1,8 +1,12 @@
-import { getLands, getInvestments, getUsers, createInvestment } from '@/actions';
+import { getCurrentUser, getLands, getInvestments, createInvestment } from '@/actions';
+import { redirect } from 'next/navigation';
+import { getServerTranslation } from '@/lib/translations';
 
 export default async function InvestorDashboard() {
-  const users = await getUsers();
-  const investor = users.find(u => u.role === 'INVESTOR');
+  const t = await getServerTranslation();
+  const investor = await getCurrentUser();
+  if (!investor) redirect('/login?next=/dashboard/investor');
+  if (investor.role !== 'INVESTOR') redirect('/');
   
   const allLands = await getLands();
   const activeFarms = allLands.filter(l => l.status === 'RENTED');
@@ -16,20 +20,18 @@ export default async function InvestorDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-500">
-            Investor Portal
+            {t.investor_portal}
           </h1>
           <p className="text-gray-400 mt-2">Invest in high-yield crops and watch your portfolio grow.</p>
         </div>
         <div className="glass-panel px-6 py-4 text-right flex items-center space-x-6">
-          {investor && (
-             <div className="flex items-center space-x-3 border-r border-white/10 pr-6">
-               <img src={investor.avatarUrl || '/vercel.svg'} alt={investor.name} className="w-12 h-12 rounded-full border border-blue-500 object-cover" />
-               <div className="text-left">
-                  <p className="text-sm font-semibold">{investor.name}</p>
-                  <p className="text-xs text-blue-400">{investor.isVerified ? 'Verified Investor ✓' : ''}</p>
-               </div>
-             </div>
-          )}
+          <div className="flex items-center space-x-3 border-r border-white/10 pr-6">
+            <img src={investor.avatarUrl || '/vercel.svg'} alt={investor.name} className="w-12 h-12 rounded-full border border-blue-500 object-cover" />
+            <div className="text-left">
+              <p className="text-sm font-semibold">{investor.name}</p>
+              <p className="text-xs text-blue-400">{investor.isVerified ? 'Verified Investor ✓' : ''}</p>
+            </div>
+          </div>
           <div>
              <p className="text-sm text-gray-400">Total Portfolio</p>
              <p className="text-3xl font-bold text-blue-400">${totalInvested.toLocaleString()}</p>
@@ -127,10 +129,10 @@ export default async function InvestorDashboard() {
                   <div className="mt-auto pt-4 border-t border-white/5">
                      <form action={async () => {
                        "use server";
-                       await createInvestment(land.id, investor?.id!, 500);
+                       await createInvestment(land.id, investor.id, 500);
                      }}>
                        <button type="submit" className="w-full py-3 bg-blue-600 hover:bg-blue-500 font-semibold rounded-lg transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.6)]">
-                         Invest $500 Share
+                         Invest $500 (Stripe)
                        </button>
                      </form>
                   </div>

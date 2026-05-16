@@ -17,14 +17,18 @@ model User {
   role        String       // 'LANDOWNER', 'FARMER', 'INVESTOR'
   name        String
   email       String       @unique
+  passwordHash String?
   avatarUrl   String?
   bio         String?
   isVerified  Boolean      @default(false)
   lands       Land[]       @relation("LandOwner")
   rented      Land[]       @relation("LandRenter")
   investments Investment[]
+  payments    Payment[]
+  payouts     Payout[]
   messagesSent   Message[] @relation("Sender")
   messagesRecv   Message[] @relation("Receiver")
+  rentalRequests RentalRequest[] @relation("FarmerRequests")
 }
 
 model Land {
@@ -43,10 +47,14 @@ model Land {
   estYield      Float?       // AI Generated
   pesticides    String?      // AI Generated
   status        String       @default("AVAILABLE") // AVAILABLE, RENTED
+  isVerified    Boolean      @default(false)
   owner         User         @relation("LandOwner", fields: [ownerId], references: [id])
   renter        User?        @relation("LandRenter", fields: [renterId], references: [id])
   investments   Investment[]
+  payments      Payment[]
+  payouts       Payout[]
   updates       ProjectUpdate[]
+  rentalRequests RentalRequest[]
 }
 
 model ProjectUpdate {
@@ -74,6 +82,56 @@ model Investment {
   landId     String
   investorId String
   amount     Float
+  status     String @default("PENDING") // PENDING, PAID, REFUNDED
+  createdAt  DateTime @default(now())
+  paidAt     DateTime?
+  payment    Payment?
   investor   User   @relation(fields: [investorId], references: [id])
   land       Land   @relation(fields: [landId], references: [id])
+}
+
+model Payment {
+  id               String   @id @default(cuid())
+  provider         String   // STRIPE
+  providerRef      String   @unique // e.g. Stripe Checkout Session ID
+  status           String   // CREATED, PAID, FAILED, REFUNDED
+  amount           Float
+  currency         String   @default("usd")
+  investorId       String
+  landId           String
+  investmentId     String?  @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  rawEventId       String?
+
+  investor         User      @relation(fields: [investorId], references: [id])
+  land             Land      @relation(fields: [landId], references: [id])
+  investment       Investment? @relation(fields: [investmentId], references: [id])
+}
+
+model RentalRequest {
+  id         String   @id @default(cuid())
+  landId     String
+  farmerId   String
+  status     String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  message    String?
+  createdAt  DateTime @default(now())
+  
+  land       Land     @relation(fields: [landId], references: [id])
+  farmer     User     @relation("FarmerRequests", fields: [farmerId], references: [id])
+}
+
+model Payout {
+  id          String   @id @default(cuid())
+  investorId  String
+  landId      String
+  amount      Float
+  currency    String   @default("usd")
+  status      String   @default("PENDING") // PENDING, PAID, FAILED
+  createdAt   DateTime @default(now())
+  paidAt      DateTime?
+  note        String?
+
+  investor    User @relation(fields: [investorId], references: [id])
+  land        Land @relation(fields: [landId], references: [id])
 }

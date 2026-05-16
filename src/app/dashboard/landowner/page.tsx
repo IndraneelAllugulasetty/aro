@@ -1,8 +1,11 @@
-import { getLands, getUsers, submitLandListing } from '@/actions';
+import { getCurrentUser, getLands, submitLandListing } from '@/actions';
+import { redirect } from 'next/navigation';
+import { LocationFields } from '@/components/LocationFields';
 
 export default async function LandownerDashboard() {
-  const users = await getUsers();
-  const owner = users.find(u => u.role === 'LANDOWNER');
+  const owner = await getCurrentUser();
+  if (!owner) redirect('/login?next=/dashboard/landowner');
+  if (owner.role !== 'LANDOWNER') redirect('/');
   
   const allLands = await getLands();
   const myLands = allLands.filter(l => l.ownerId === owner?.id);
@@ -21,7 +24,7 @@ export default async function LandownerDashboard() {
         <div className="glass-panel p-6">
           <h2 className="text-xl font-semibold mb-4">List New Land</h2>
           <form action={submitLandListing} className="space-y-4">
-            <input type="hidden" name="ownerId" value={owner?.id} />
+            <input type="hidden" name="ownerId" value={owner.id} />
             
             <div>
               <label className="block text-sm text-gray-400 mb-1">Land Name</label>
@@ -30,12 +33,12 @@ export default async function LandownerDashboard() {
             
             <div>
               <label className="block text-sm text-gray-400 mb-1">Location</label>
-              <input name="location" required className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-emerald-500 transition-colors" placeholder="City, State" />
+              <LocationFields />
             </div>
 
             <div>
               <label className="block text-sm text-gray-400 mb-1">Size (Acres)</label>
-              <input name="sizeAcres" type="number" step="0.1" required className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-emerald-500 transition-colors" placeholder="e.g. 5.5" />
+              <input name="sizeAcres" type="number" step="0.1" min="0.01" required className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:outline-none focus:border-emerald-500 transition-colors" placeholder="e.g. 5.5" />
             </div>
 
             <button type="submit" className="w-full py-3 mt-4 bg-emerald-500 hover:bg-emerald-600 font-semibold rounded-lg shadow-[0_0_15px_rgba(16,185,129,0.5)] transition-all">

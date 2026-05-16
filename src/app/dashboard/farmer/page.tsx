@@ -1,95 +1,127 @@
-import { getLands, getUsers, rentLand, postUpdate } from '@/actions';
+import { getCurrentUser, getLands, rentLand, postUpdate } from '@/actions';
+import { redirect } from 'next/navigation';
+import { WeatherCard } from '@/components/WeatherCard';
+import { getServerTranslation } from '@/lib/translations';
 
 export default async function FarmerDashboard() {
-  const users = await getUsers();
-  const farmer = users.find(u => u.role === 'FARMER');
+  const t = await getServerTranslation();
+  const farmer = await getCurrentUser();
+  if (!farmer) redirect('/login?next=/dashboard/farmer');
+  if (farmer.role !== 'FARMER') redirect('/');
   
   const allLands = await getLands();
   const availableLands = allLands.filter(l => l.status === 'AVAILABLE');
   const myRentedLands = allLands.filter(l => l.renterId === farmer?.id);
 
+  const marketPrices = [
+    { crop: 'Rice (Basmati)', price: '₹4,200', trend: '+2.4%', up: true },
+    { crop: 'Wheat', price: '₹2,350', trend: '-0.8%', up: false },
+    { crop: 'Cotton', price: '₹7,100', trend: '+5.2%', up: true },
+    { crop: 'Sugarcane', price: '₹3,150', trend: '+1.1%', up: true },
+  ];
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
+    <div className="space-y-10 animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-orange-500">
-            Farmer Portal
+          <h1 className="text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-orange-500">
+            {t.farmer_portal}
           </h1>
-          <p className="text-gray-400 mt-2">Find AI-analyzed lands suitable for your next harvest and post updates.</p>
+          <p className="text-gray-400 mt-2">Precision agriculture tools and real-time market intelligence.</p>
         </div>
-        <div className="glass-panel px-6 py-4 text-right flex items-center space-x-6">
-          {farmer && (
-             <div className="flex items-center space-x-3 border-r border-white/10 pr-6">
-               <img src={farmer.avatarUrl || '/vercel.svg'} alt={farmer.name} className="w-12 h-12 rounded-full border border-amber-500 object-cover" />
-               <div className="text-left">
-                  <p className="text-sm font-semibold">{farmer.name}</p>
-                  <p className="text-xs text-amber-400">{farmer.isVerified ? 'Verified Farmer ✓' : ''}</p>
-               </div>
-             </div>
-          )}
-          <div>
-            <p className="text-sm text-gray-400">Total Rented</p>
-            <p className="text-3xl font-bold text-amber-400">{myRentedLands.length} Farms</p>
-          </div>
+        
+        {/* Market Prices Ticker */}
+        <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
+          {marketPrices.map((item, i) => (
+            <div key={i} className="glass-panel px-4 py-3 min-w-[160px] border-amber-500/10">
+              <p className="text-[10px] text-gray-500 font-bold uppercase">{item.crop}</p>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-sm font-black text-white">{item.price}</span>
+                <span className={`text-[10px] font-bold ${item.up ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {item.trend}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
+      {/* Active Farms + Weather */}
       <div className="space-y-6">
-        <h2 className="text-2xl font-semibold border-b border-white/10 pb-2">My Active Farms</h2>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="flex items-center gap-3">
+          <div className="w-1.5 h-8 bg-amber-500 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.5)]" />
+          <h2 className="text-2xl font-bold">My Active Portfolio</h2>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {myRentedLands.length === 0 ? (
-             <p className="text-gray-500 italic col-span-3">You haven't rented any land yet.</p>
+             <p className="text-gray-500 italic col-span-2">No active farm management found. Browse listings below to start.</p>
           ) : (
             myRentedLands.map(land => (
-              <div key={land.id} className="glass-card flex flex-col overflow-hidden border border-amber-500/20">
-                <div className="h-32 w-full relative group">
-                  <img src={land.imageUrl || 'https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?auto=format&fit=crop&q=80&w=800'} alt="Farm" className="object-cover w-full h-full opacity-60 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent p-4 flex flex-col justify-end">
-                    <h3 className="font-bold text-lg text-white">{land.name}</h3>
-                  </div>
-                </div>
-                
-                <div className="p-5 flex flex-col flex-1">
-                   <p className="text-sm text-gray-400 mb-4">{land.location}</p>
-                   <div className="space-y-2 text-sm mb-6 border-b border-white/10 pb-4">
-                     <div className="flex justify-between"><span className="text-gray-500">Growing:</span> <span className="text-amber-400 font-semibold">{land.suitableCrops}</span></div>
-                     <div className="flex justify-between"><span className="text-gray-500">Expected Yield:</span> <span className="text-emerald-400 font-semibold">${land.estYield?.toLocaleString()}</span></div>
-                   </div>
+              <div key={land.id} className="glass-panel overflow-hidden border-amber-500/10 hover:border-amber-500/30 transition-all duration-500 group">
+                <div className="flex flex-col xl:flex-row h-full">
+                  <div className="xl:w-1/2 p-6 flex flex-col">
+                    <div className="flex justify-between items-start mb-4">
+                      <h3 className="text-2xl font-black text-white group-hover:text-amber-400 transition-colors">{land.name}</h3>
+                      <span className="text-[10px] px-2 py-1 bg-amber-500/20 text-amber-400 rounded-full font-black tracking-widest uppercase">Active</span>
+                    </div>
+                    
+                    <div className="space-y-4 mb-6">
+                      <div className="flex items-center gap-2 text-sm text-gray-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        {land.location}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white/5 p-3 rounded-2xl border border-white/5">
+                          <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Target Crop</p>
+                          <p className="text-sm font-black text-amber-400">{land.suitableCrops}</p>
+                        </div>
+                        <div className="bg-white/5 p-3 rounded-2xl border border-white/5">
+                          <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Est. Profit</p>
+                          <p className="text-sm font-black text-emerald-400">₹{(land.estYield || 0) * 80}</p>
+                        </div>
+                      </div>
+                    </div>
 
-                   {/* Previous Updates */}
-                   {land.updates && land.updates.length > 0 && (
-                     <div className="mb-4 bg-black/20 border border-white/5 rounded-lg p-3 max-h-40 overflow-y-auto custom-scrollbar">
-                       <p className="text-xs text-emerald-400 font-semibold mb-2 uppercase tracking-wider">Past Milestones</p>
-                       <div className="space-y-3">
-                         {land.updates.map((update: any) => (
-                           <div key={update.id} className="border-b border-white/5 pb-2 last:border-0 last:pb-0">
-                             <p className="text-sm font-semibold">{update.title}</p>
-                             <p className="text-xs text-gray-400 mt-1">{update.content}</p>
-                             <p className="text-[10px] text-gray-500 mt-1">{new Date(update.createdAt).toLocaleDateString()}</p>
-                           </div>
-                         ))}
-                       </div>
-                     </div>
-                   )}
-
-                   {/* Post Update Form */}
-                   <div className="bg-black/30 p-3 rounded-lg mt-auto">
-                      <p className="text-xs text-gray-400 mb-2 font-semibold uppercase tracking-wider">Post Milestone</p>
-                      <form action={async (formData) => {
+                    <div className="mt-auto">
+                       <form action={async (formData) => {
                         "use server";
                         const title = formData.get('title') as string;
                         const content = formData.get('content') as string;
-                        if (title && content) {
-                          await postUpdate(land.id, title, content);
-                        }
+                        if (title && content) await postUpdate(land.id, title, content);
                       }} className="space-y-2">
-                         <input name="title" required placeholder="Milestone Title" className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-sm focus:border-amber-500 outline-none" />
-                         <textarea name="content" required placeholder="What progress did you make?" rows={2} className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-sm focus:border-amber-500 outline-none resize-none"></textarea>
-                         <button type="submit" className="w-full py-1.5 bg-amber-600/80 hover:bg-amber-500 text-xs font-semibold rounded transition-colors">
-                           Submit Update
+                         <input name="title" required placeholder="Milestone (e.g. Sowing complete)" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:border-amber-500 outline-none" />
+                         <button type="submit" className="w-full py-2 bg-amber-500/20 hover:bg-amber-500 text-amber-400 hover:text-white text-xs font-black uppercase tracking-widest rounded-xl transition-all">
+                           Log Progress
                          </button>
                       </form>
-                   </div>
+                    </div>
+                  </div>
+                  
+                  {/* Weather Intelligence Widget */}
+                  <div className="xl:w-1/2 bg-black/40 border-l border-white/5">
+                    <WeatherCard 
+                      lat={land.latitude || 19.076} 
+                      lon={land.longitude || 72.877} 
+                      landName={land.name} 
+                    />
+                    
+                    {/* Activity Feed Snippet */}
+                    <div className="p-6 pt-0">
+                      <p className="text-[10px] text-gray-500 font-black uppercase mb-3 tracking-widest">Recent Activity</p>
+                      <div className="space-y-3">
+                        {land.updates?.slice(0, 2).map((up: any) => (
+                          <div key={up.id} className="flex gap-3">
+                            <div className="w-1 h-8 bg-white/10 rounded-full" />
+                            <div>
+                              <p className="text-xs font-bold text-gray-300">{up.title}</p>
+                              <p className="text-[10px] text-gray-500">{new Date(up.createdAt).toLocaleDateString()}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))
@@ -97,52 +129,45 @@ export default async function FarmerDashboard() {
         </div>
       </div>
 
-      <div className="space-y-6 mt-12">
-         <h2 className="text-2xl font-semibold border-b border-white/10 pb-2">Discover Lands</h2>
-         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 transform-gpu">
+      {/* Discovery Section */}
+      <div className="space-y-6 mt-16">
+        <div className="flex items-center gap-3">
+          <div className="w-1.5 h-8 bg-emerald-500 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+          <h2 className="text-2xl font-bold">New Opportunities</h2>
+        </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {availableLands.map(land => (
-             <div key={land.id} className="glass-card flex flex-col relative overflow-hidden transform hover:-translate-y-1 transition-all duration-300">
-               {/* Cover Image */}
-               <div className="h-48 w-full relative group">
-                  <img src={land.imageUrl || 'https://images.unsplash.com/photo-1508546594248-c8751bf878d6?auto=format&fit=crop&q=80&w=800'} alt="Farm" className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700" />
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                     <h3 className="font-bold text-xl text-white">{land.name}</h3>
-                     <p className="text-sm text-gray-200">{land.location} • {land.sizeAcres} Acres</p>
-                  </div>
+            <div key={land.id} className="glass-panel group hover:border-emerald-500/50 transition-all duration-500 p-6 flex flex-col h-full relative overflow-hidden">
+               <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-xl font-bold text-white group-hover:text-emerald-400 transition-colors">{land.name}</h3>
+                  <img src={land.owner.avatarUrl || 'https://via.placeholder.com/150'} className="w-8 h-8 rounded-full border border-white/10" />
                </div>
-
-               <div className="p-5 flex-1 flex flex-col justify-between">
-                 <div>
-                    <div className="flex items-center space-x-3 mb-4 bg-white/5 p-3 rounded-lg">
-                      <img src={land.owner.avatarUrl || 'https://via.placeholder.com/150'} alt="Owner" className="w-10 h-10 rounded-full object-cover" />
-                      <div>
-                        <p className="text-sm font-semibold">{land.owner.name} <span className="text-amber-400 text-xs ml-1">✓</span></p>
-                        <p className="text-xs text-gray-400 line-clamp-1">{land.owner.bio || 'Land Owner'}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="my-4 space-y-2 bg-black/30 p-3 rounded-lg text-sm shadow-inner">
-                      <div className="flex justify-between"><span className="text-gray-500">Soil:</span> <span>{land.soilType}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-500">Best For:</span> <span className="text-amber-400 font-semibold">{land.suitableCrops}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-500">Funding Limit:</span> <span>${land.estBudget?.toLocaleString()}</span></div>
-                      <div className="flex justify-between"><span className="text-gray-500">Pesticides:</span> <span>{land.pesticides}</span></div>
-                    </div>
+               
+               <p className="text-gray-400 text-sm mb-6">{land.location} • {land.sizeAcres} Acres</p>
+               
+               <div className="grid grid-cols-2 gap-3 mb-6">
+                 <div className="bg-white/5 p-3 rounded-2xl border border-white/5">
+                   <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Soil Score</p>
+                   <p className="text-sm font-black text-amber-400">A+ Organic</p>
                  </div>
-                 
-                 <form action={async () => {
-                   "use server";
-                   await rentLand(land.id, farmer?.id!);
-                 }}>
-                   <button type="submit" className="w-full mt-4 py-3 bg-amber-500 hover:bg-amber-600 font-semibold rounded-lg transition-all shadow-[0_0_15px_rgba(245,158,11,0.3)] hover:shadow-[0_0_25px_rgba(245,158,11,0.5)]">
-                     Rent & Start Growing
-                   </button>
-                 </form>
+                 <div className="bg-white/5 p-3 rounded-2xl border border-white/5">
+                   <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Yield Potential</p>
+                   <p className="text-sm font-black text-emerald-400">High</p>
+                 </div>
                </div>
-             </div>
-          ))}
-         </div>
-      </div>
 
+               <form action={async () => {
+                 "use server";
+                 await rentLand(land.id, farmer.id);
+               }} className="mt-auto">
+                 <button type="submit" className="w-full py-3 bg-white/5 hover:bg-emerald-500 border border-white/10 hover:border-emerald-500 text-gray-300 hover:text-white font-black uppercase tracking-widest text-xs rounded-xl transition-all">
+                   Request Lease →
+                 </button>
+               </form>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
