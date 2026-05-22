@@ -12,7 +12,6 @@
 <br />
 
 ## 📖 About
-
 **Aro** is a robust, dynamic web application designed to bridge the gap between agriculture and investment. Featuring a sophisticated three-tiered user system, it connects farmers, land owners, and investors, providing tools for land listing, investment management, and data-driven crop yield prediction.
 
 ## ✨ Features
@@ -22,7 +21,6 @@
 - **📈 Yield Prediction**: Advanced lookups predicting crop yield, financial returns, and resource requirements.
 - **💸 Investment Ecosystem**: Seamlessly integrated with Stripe for managing transparent agricultural investments.
 - **🎨 Dynamic & Responsive UI**: Built with Tailwind CSS and Framer Motion for smooth micro-animations and an immersive, premium user experience.
-
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 16 (App Router), React 19, Tailwind CSS 4, Framer Motion
@@ -66,7 +64,7 @@ Make sure you have [Node.js](https://nodejs.org/) installed.
 
 ## 🤝 Contributing
 Contributions, issues, and feature requests are welcome! Feel free to check the issues page.
-
+Pls contribute in this page;
 ---
 <div align="center">
   <sub>Built with ❤️ by Indraneel Allugulasetty</sub>
